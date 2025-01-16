@@ -146,7 +146,7 @@ var testVectors1024 = []struct {
 		tweak: "000102030405060708090a0b0c0d0e0f",
 		plaintext: "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0" +
 			"dfdedddcdbdad9d8d7d6d5d4d3d2d1d0cfcecdcccbcac9c8c7c6c5c4c3c2c1c0" +
-			"bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0" +
+			"bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afsnobyacabaaa9a8a7a6a5a4a3a2a1a0" +
 			"9f9e9d9c9b9a999897969594939291908f8e8d8c8b8a89888786858483828180",
 		ciphertext: "a6654ddbd73cc3b05dd777105aa849bce49372eaaffc5568d254771bab85531c" +
 			"94f780e7ffaae430d5d8af8c70eebbe1760f3b42b737a89cb363490d670314bd" +

@@ -1,12 +1,8 @@
-// Copyright (c) 2016 Andreas Auernhammer. All rights reserved.
-// Use of this source code is governed by a license that can be
-// found in the LICENSE file.
-
 package skein256
 
 import (
-	"github.com/aead/skein"
-	"github.com/aead/skein/threefish"
+	"github.com/snoby/skein"
+	"github.com/snoby/skein/threefish"
 )
 
 type hashFunc struct {
@@ -16,6 +12,21 @@ type hashFunc struct {
 	block         [threefish.BlockSize256]byte
 	off           int
 	hasMsg        bool
+	// Pre-allocated buffers
+	tempBlock    [4]uint64
+	outputBuffer [threefish.BlockSize256]byte
+}
+
+func New(size int) *hashFunc {
+	h := &hashFunc{}
+	h.initialize(size, nil)
+	return h
+}
+
+func NewWithConfig(size int, conf *skein.Config) *hashFunc {
+	h := &hashFunc{}
+	h.initialize(size, conf)
+	return h
 }
 
 func (s *hashFunc) BlockSize() int { return threefish.BlockSize256 }
@@ -37,29 +48,27 @@ func (s *hashFunc) Reset() {
 
 func (s *hashFunc) Write(p []byte) (n int, err error) {
 	s.hasMsg = true
-
 	n = len(p)
-	var block [4]uint64
 
 	dif := threefish.BlockSize256 - s.off
 	if s.off > 0 && n > dif {
 		s.off += copy(s.block[s.off:], p[:dif])
 		p = p[dif:]
 		if s.off == threefish.BlockSize256 && len(p) > 0 {
-			bytesToBlock(&block, s.block[:])
-			s.update(&block)
+			bytesToBlock(&s.tempBlock, s.block[:])
+			s.update(&s.tempBlock)
 			s.off = 0
 		}
 	}
 
 	if length := len(p); length > threefish.BlockSize256 {
-		nn := length & (^(threefish.BlockSize256 - 1)) // length -= (length % BlockSize)
+		nn := length & (^(threefish.BlockSize256 - 1))
 		if length == nn {
 			nn -= threefish.BlockSize256
 		}
 		for i := 0; i < len(p[:nn]); i += threefish.BlockSize256 {
-			bytesToBlock(&block, p[i:])
-			s.update(&block)
+			bytesToBlock(&s.tempBlock, p[i:])
+			s.update(&s.tempBlock)
 		}
 		p = p[nn:]
 	}
@@ -71,19 +80,17 @@ func (s *hashFunc) Write(p []byte) (n int, err error) {
 }
 
 func (s *hashFunc) Sum(b []byte) []byte {
-	s0 := *s // copy
+	s0 := *s // shallow copy is fine here since we don't modify deep contents
 
 	if s0.hasMsg {
 		s0.finalizeHash()
 	}
 
-	var out [threefish.BlockSize256]byte
 	var ctr uint64
-
 	for i := s0.hashsize; i > 0; i -= threefish.BlockSize256 {
-		s0.output(&out, ctr)
+		s0.output(&s0.outputBuffer, ctr)
 		ctr++
-		b = append(b, out[:]...)
+		b = append(b, s0.outputBuffer[:]...)
 	}
 
 	return b[:s0.hashsize]
@@ -91,23 +98,23 @@ func (s *hashFunc) Sum(b []byte) []byte {
 
 func (s *hashFunc) update(block *[4]uint64) {
 	threefish.IncrementTweak(&(s.tweak), threefish.BlockSize256)
-
 	threefish.UBI256(block, &(s.hVal), &(s.tweak))
-
 	s.tweak[1] &^= skein.FirstBlock
 }
 
 func (s *hashFunc) output(dst *[threefish.BlockSize256]byte, counter uint64) {
-	var block [4]uint64
-	block[0] = counter
+	s.tempBlock[0] = counter
+	s.tempBlock[1] = 0
+	s.tempBlock[2] = 0
+	s.tempBlock[3] = 0
 
 	hVal := s.hVal
 	var outTweak = [3]uint64{8, skein.CfgOutput<<56 | skein.FirstBlock | skein.FinalBlock, 0}
 
-	threefish.UBI256(&block, &hVal, &outTweak)
-	block[0] ^= counter
+	threefish.UBI256(&s.tempBlock, &hVal, &outTweak)
+	s.tempBlock[0] ^= counter
 
-	blockToBytes(dst[:], &block)
+	blockToBytes(dst[:], &s.tempBlock)
 }
 
 func (s *hashFunc) initialize(hashsize int, conf *skein.Config) {
@@ -188,21 +195,18 @@ func (s *hashFunc) initialize(hashsize int, conf *skein.Config) {
 	}
 
 	s.hValCpy = s.hVal
-
 	s.Reset()
 }
 
 func (s *hashFunc) finalizeHash() {
 	threefish.IncrementTweak(&(s.tweak), uint64(s.off))
-	s.tweak[1] |= skein.FinalBlock // set the last block flag
+	s.tweak[1] |= skein.FinalBlock
 
 	for i := s.off; i < len(s.block); i++ {
 		s.block[i] = 0
 	}
 	s.off = 0
 
-	var block [4]uint64
-	bytesToBlock(&block, s.block[:])
-
-	threefish.UBI256(&block, &(s.hVal), &(s.tweak))
+	bytesToBlock(&s.tempBlock, s.block[:])
+	threefish.UBI256(&s.tempBlock, &(s.hVal), &(s.tweak))
 }

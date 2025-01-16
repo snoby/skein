@@ -5,8 +5,8 @@
 package skein1024
 
 import (
-	"github.com/aead/skein"
-	"github.com/aead/skein/threefish"
+	"github.com/snoby/skein"
+	"github.com/snoby/skein/threefish"
 )
 
 type hashFunc struct {
