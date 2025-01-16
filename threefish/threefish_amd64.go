@@ -2,11 +2,14 @@
 // Use of this source code is governed by a license that can be
 // found in the LICENSE file.
 
+//go:build amd64
 // +build amd64
 
 package threefish
 
-import "unsafe"
+import (
+	"unsafe"
+)
 
 func bytesToBlock256(block *[4]uint64, src []byte) {
 	srcPtr := (*[4]uint64)(unsafe.Pointer(&src[0]))
