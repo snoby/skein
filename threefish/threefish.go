@@ -6,9 +6,9 @@
 // Threefish is designed to be the core function of the Skein hash function
 // family.
 // There are three versions of Threefish
-// 		- Threefish256  processes 256  bit blocks
-//		- Threefish512  processes 512  bit blocks
-//		- Threefish1024 processes 1024 bit blocks
+//   - Threefish256  processes 256  bit blocks
+//   - Threefish512  processes 512  bit blocks
+//   - Threefish1024 processes 1024 bit blocks
 package threefish
 
 import (
@@ -35,9 +35,9 @@ var errKeySize = errors.New("invalid key size")
 // The length of the key must be 32, 64 or 128 byte.
 // The length of the tweak must be TweakSize.
 // The returned cipher implements:
-//		- Threefish-256  - if len(key) = 32
-//		- Threefish-512  - if len(key) = 64
-// 		- Threefish-1024 - if len(key) = 128
+//   - Threefish-256  - if len(key) = 32
+//   - Threefish-512  - if len(key) = 64
+//   - Threefish-1024 - if len(key) = 128
 func NewCipher(tweak *[TweakSize]byte, key []byte) (cipher.Block, error) {
 	switch k := len(key); k {
 	default:
@@ -72,8 +72,9 @@ func (t *threefish256) BlockSize() int { return BlockSize256 }
 
 // The threefish-512 tweakable blockcipher
 type threefish512 struct {
-	keys  [9]uint64
-	tweak [3]uint64
+	keys     [9]uint64
+	tweak    [3]uint64
+	tmpBlock [8]uint64 // Add this line to existing struct
 }
 
 func (t *threefish512) BlockSize() int { return BlockSize512 }

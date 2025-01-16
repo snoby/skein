@@ -1,27 +1,15 @@
-// Copyright (c) 2016 Andreas Auernhammer. All rights reserved.
-// Use of this source code is governed by a license that can be
-// found in the LICENSE file.
-
 package threefish
 
 func (t *threefish512) Encrypt(dst, src []byte) {
-	var block [8]uint64
-
-	bytesToBlock512(&block, src)
-
-	Encrypt512(&block, &(t.keys), &(t.tweak))
-
-	block512ToBytes(dst, &block)
+	bytesToBlock512(&t.tmpBlock, src)
+	Encrypt512(&t.tmpBlock, &(t.keys), &(t.tweak))
+	block512ToBytes(dst, &t.tmpBlock)
 }
 
 func (t *threefish512) Decrypt(dst, src []byte) {
-	var block [8]uint64
-
-	bytesToBlock512(&block, src)
-
-	Decrypt512(&block, &(t.keys), &(t.tweak))
-
-	block512ToBytes(dst, &block)
+	bytesToBlock512(&t.tmpBlock, src)
+	Decrypt512(&t.tmpBlock, &(t.keys), &(t.tweak))
+	block512ToBytes(dst, &t.tmpBlock)
 }
 
 func newCipher512(tweak *[TweakSize]byte, key []byte) *threefish512 {
@@ -40,7 +28,8 @@ func newCipher512(tweak *[TweakSize]byte, key []byte) *threefish512 {
 		c.keys[i] = uint64(key[j]) | uint64(key[j+1])<<8 | uint64(key[j+2])<<16 | uint64(key[j+3])<<24 |
 			uint64(key[j+4])<<32 | uint64(key[j+5])<<40 | uint64(key[j+6])<<48 | uint64(key[j+7])<<56
 	}
-	c.keys[8] = C240 ^ c.keys[0] ^ c.keys[1] ^ c.keys[2] ^ c.keys[3] ^ c.keys[4] ^ c.keys[5] ^ c.keys[6] ^ c.keys[7]
+	c.keys[8] = C240 ^ c.keys[0] ^ c.keys[1] ^ c.keys[2] ^ c.keys[3] ^
+		c.keys[4] ^ c.keys[5] ^ c.keys[6] ^ c.keys[7]
 
 	return c
 }
