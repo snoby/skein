@@ -38,179 +38,108 @@ func newCipher512(tweak *[TweakSize]byte, key []byte) *threefish512 {
 //	threefish512EncryptAVX2(block, keys, tweak)
 //	return
 //}
-func rotate(x uint64, k uint) uint64 {
-	return (x << k) | (x >> (64 - k))
-}
-
+// // Encrypt512 encrypts the 8 words of block using the expanded 512 bit key and
+// // the 128 bit tweak. The keys[8] must be keys[0] xor keys[1] xor ... keys[8] xor C240.
+// // The tweak[2] must be tweak[0] xor tweak[1].
+//
 func Encrypt512(block *[8]uint64, keys *[9]uint64, tweak *[3]uint64) {
-	// Load all values into registers at the start
 	b0, b1, b2, b3 := block[0], block[1], block[2], block[3]
 	b4, b5, b6, b7 := block[4], block[5], block[6], block[7]
 
-	// Pre-compute frequently used values
-	var t0 uint64
-
 	for r := 0; r < 17; r++ {
-		 // First subround - key mixing
-		 b0 += keys[r%9]
-		 b1 += keys[(r+1)%9]
-		 b2 += keys[(r+2)%9]
-		 b3 += keys[(r+3)%9]
-		 b4 += keys[(r+4)%9]
-		 b5 += keys[(r+5)%9] + tweak[r%3]
-		 b6 += keys[(r+6)%9] + tweak[(r+1)%3]
-		 b7 += keys[(r+7)%9] + uint64(r)
+		b0 += keys[r%9]
+		b1 += keys[(r+1)%9]
+		b2 += keys[(r+2)%9]
+		b3 += keys[(r+3)%9]
+		b4 += keys[(r+4)%9]
+		b5 += keys[(r+5)%9] + tweak[r%3]
+		b6 += keys[(r+6)%9] + tweak[(r+1)%3]
+		b7 += keys[(r+7)%9] + uint64(r)
 
-		 // First mix function group - can potentially be executed in parallel
-		 b0 += b1
-		 t0 = rotate(b1, 46)
-		 b1 = t0 ^ b0
+		b0 += b1
+		b1 = (b1<<46 | b1>>(64-46)) ^ b0
+		b2 += b3
+		b3 = (b3<<36 | b3>>(64-36)) ^ b2
+		b4 += b5
+		b5 = (b5<<19 | b5>>(64-19)) ^ b4
+		b6 += b7
+		b7 = (b7<<37 | b7>>(64-37)) ^ b6
 
-		 b2 += b3
-		 t0 = rotate(b3, 36)
-		 b3 = t0 ^ b2
+		b2 += b1
+		b1 = (b1<<33 | b1>>(64-33)) ^ b2
+		b4 += b7
+		b7 = (b7<<27 | b7>>(64-27)) ^ b4
+		b6 += b5
+		b5 = (b5<<14 | b5>>(64-14)) ^ b6
+		b0 += b3
+		b3 = (b3<<42 | b3>>(64-42)) ^ b0
 
-		 b4 += b5
-		 t0 = rotate(b5, 19)
-		 b5 = t0 ^ b4
+		b4 += b1
+		b1 = (b1<<17 | b1>>(64-17)) ^ b4
+		b6 += b3
+		b3 = (b3<<49 | b3>>(64-49)) ^ b6
+		b0 += b5
+		b5 = (b5<<36 | b5>>(64-36)) ^ b0
+		b2 += b7
+		b7 = (b7<<39 | b7>>(64-39)) ^ b2
 
-		 b6 += b7
-		 t0 = rotate(b7, 37)
-		 b7 = t0 ^ b6
+		b6 += b1
+		b1 = (b1<<44 | b1>>(64-44)) ^ b6
+		b0 += b7
+		b7 = (b7<<9 | b7>>(64-9)) ^ b0
+		b2 += b5
+		b5 = (b5<<54 | b5>>(64-54)) ^ b2
+		b4 += b3
+		b3 = (b3<<56 | b3>>(64-56)) ^ b4
 
-		 // Second mix function group
-		 b2 += b1
-		 t0 = rotate(b1, 33)
-		 b1 = t0 ^ b2
+		r++
 
-		 b4 += b7
-		 t0 = rotate(b7, 27)
-		 b7 = t0 ^ b4
+		b0 += keys[r%9]
+		b1 += keys[(r+1)%9]
+		b2 += keys[(r+2)%9]
+		b3 += keys[(r+3)%9]
+		b4 += keys[(r+4)%9]
+		b5 += keys[(r+5)%9] + tweak[r%3]
+		b6 += keys[(r+6)%9] + tweak[(r+1)%3]
+		b7 += keys[(r+7)%9] + uint64(r)
 
-		 b6 += b5
-		 t0 = rotate(b5, 14)
-		 b5 = t0 ^ b6
+		b0 += b1
+		b1 = (b1<<39 | b1>>(64-39)) ^ b0
+		b2 += b3
+		b3 = (b3<<30 | b3>>(64-30)) ^ b2
+		b4 += b5
+		b5 = (b5<<34 | b5>>(64-34)) ^ b4
+		b6 += b7
+		b7 = (b7<<24 | b7>>(64-24)) ^ b6
 
-		 b0 += b3
-		 t0 = rotate(b3, 42)
-		 b3 = t0 ^ b0
+		b2 += b1
+		b1 = (b1<<13 | b1>>(64-13)) ^ b2
+		b4 += b7
+		b7 = (b7<<50 | b7>>(64-50)) ^ b4
+		b6 += b5
+		b5 = (b5<<10 | b5>>(64-10)) ^ b6
+		b0 += b3
+		b3 = (b3<<17 | b3>>(64-17)) ^ b0
 
-		 // Third mix function group
-		 b4 += b1
-		 t0 = rotate(b1, 17)
-		 b1 = t0 ^ b4
+		b4 += b1
+		b1 = (b1<<25 | b1>>(64-25)) ^ b4
+		b6 += b3
+		b3 = (b3<<29 | b3>>(64-29)) ^ b6
+		b0 += b5
+		b5 = (b5<<39 | b5>>(64-39)) ^ b0
+		b2 += b7
+		b7 = (b7<<43 | b7>>(64-43)) ^ b2
 
-		 b6 += b3
-		 t0 = rotate(b3, 49)
-		 b3 = t0 ^ b6
-
-		 b0 += b5
-		 t0 = rotate(b5, 36)
-		 b5 = t0 ^ b0
-
-		 b2 += b7
-		 t0 = rotate(b7, 39)
-		 b7 = t0 ^ b2
-
-		 // Fourth mix function group
-		 b6 += b1
-		 t0 = rotate(b1, 44)
-		 b1 = t0 ^ b6
-
-		 b0 += b7
-		 t0 = rotate(b7, 9)
-		 b7 = t0 ^ b0
-
-		 b2 += b5
-		 t0 = rotate(b5, 54)
-		 b5 = t0 ^ b2
-
-		 b4 += b3
-		 t0 = rotate(b3, 56)
-		 b3 = t0 ^ b4
-
-		 r++
-
-		 // Second subround - key mixing
-		 b0 += keys[r%9]
-		 b1 += keys[(r+1)%9]
-		 b2 += keys[(r+2)%9]
-		 b3 += keys[(r+3)%9]
-		 b4 += keys[(r+4)%9]
-		 b5 += keys[(r+5)%9] + tweak[r%3]
-		 b6 += keys[(r+6)%9] + tweak[(r+1)%3]
-		 b7 += keys[(r+7)%9] + uint64(r)
-
-		 // Fifth mix function group
-		 b0 += b1
-		 t0 = rotate(b1, 39)
-		 b1 = t0 ^ b0
-
-		 b2 += b3
-		 t0 = rotate(b3, 30)
-		 b3 = t0 ^ b2
-
-		 b4 += b5
-		 t0 = rotate(b5, 34)
-		 b5 = t0 ^ b4
-
-		 b6 += b7
-		 t0 = rotate(b7, 24)
-		 b7 = t0 ^ b6
-
-		 // Sixth mix function group
-		 b2 += b1
-		 t0 = rotate(b1, 13)
-		 b1 = t0 ^ b2
-
-		 b4 += b7
-		 t0 = rotate(b7, 50)
-		 b7 = t0 ^ b4
-
-		 b6 += b5
-		 t0 = rotate(b5, 10)
-		 b5 = t0 ^ b6
-
-		 b0 += b3
-		 t0 = rotate(b3, 17)
-		 b3 = t0 ^ b0
-
-		 // Seventh mix function group
-		 b4 += b1
-		 t0 = rotate(b1, 25)
-		 b1 = t0 ^ b4
-
-		 b6 += b3
-		 t0 = rotate(b3, 29)
-		 b3 = t0 ^ b6
-
-		 b0 += b5
-		 t0 = rotate(b5, 39)
-		 b5 = t0 ^ b0
-
-		 b2 += b7
-		 t0 = rotate(b7, 43)
-		 b7 = t0 ^ b2
-
-		 // Eighth mix function group
-		 b6 += b1
-		 t0 = rotate(b1, 8)
-		 b1 = t0 ^ b6
-
-		 b0 += b7
-		 t0 = rotate(b7, 35)
-		 b7 = t0 ^ b0
-
-		 b2 += b5
-		 t0 = rotate(b5, 56)
-		 b5 = t0 ^ b2
-
-		 b4 += b3
-		 t0 = rotate(b3, 22)
-		 b3 = t0 ^ b4
+		b6 += b1
+		b1 = (b1<<8 | b1>>(64-8)) ^ b6
+		b0 += b7
+		b7 = (b7<<35 | b7>>(64-35)) ^ b0
+		b2 += b5
+		b5 = (b5<<56 | b5>>(64-56)) ^ b2
+		b4 += b3
+		b3 = (b3<<22 | b3>>(64-22)) ^ b4
 	}
 
-	// Final key addition
 	b0 += keys[0]
 	b1 += keys[1]
 	b2 += keys[2]
@@ -220,131 +149,9 @@ func Encrypt512(block *[8]uint64, keys *[9]uint64, tweak *[3]uint64) {
 	b6 += keys[6] + tweak[1]
 	b7 += keys[7] + 18
 
-	// Store results
 	block[0], block[1], block[2], block[3] = b0, b1, b2, b3
 	block[4], block[5], block[6], block[7] = b4, b5, b6, b7
 }
-
-// Helper function to combine mix and rotate operations
-func mixAndRotate(a, b uint64, rot uint) (uint64, uint64) {
-	a += b
-	b = (b<<rot | b>>(64-rot)) ^ a
-	return a, b
-}
-// // Encrypt512 encrypts the 8 words of block using the expanded 512 bit key and
-// // the 128 bit tweak. The keys[8] must be keys[0] xor keys[1] xor ... keys[8] xor C240.
-// // The tweak[2] must be tweak[0] xor tweak[1].
-//
-//	func Encrypt512(block *[8]uint64, keys *[9]uint64, tweak *[3]uint64) {
-//		b0, b1, b2, b3 := block[0], block[1], block[2], block[3]
-//		b4, b5, b6, b7 := block[4], block[5], block[6], block[7]
-//
-//		for r := 0; r < 17; r++ {
-//			b0 += keys[r%9]
-//			b1 += keys[(r+1)%9]
-//			b2 += keys[(r+2)%9]
-//			b3 += keys[(r+3)%9]
-//			b4 += keys[(r+4)%9]
-//			b5 += keys[(r+5)%9] + tweak[r%3]
-//			b6 += keys[(r+6)%9] + tweak[(r+1)%3]
-//			b7 += keys[(r+7)%9] + uint64(r)
-//
-//			b0 += b1
-//			b1 = (b1<<46 | b1>>(64-46)) ^ b0
-//			b2 += b3
-//			b3 = (b3<<36 | b3>>(64-36)) ^ b2
-//			b4 += b5
-//			b5 = (b5<<19 | b5>>(64-19)) ^ b4
-//			b6 += b7
-//			b7 = (b7<<37 | b7>>(64-37)) ^ b6
-//
-//			b2 += b1
-//			b1 = (b1<<33 | b1>>(64-33)) ^ b2
-//			b4 += b7
-//			b7 = (b7<<27 | b7>>(64-27)) ^ b4
-//			b6 += b5
-//			b5 = (b5<<14 | b5>>(64-14)) ^ b6
-//			b0 += b3
-//			b3 = (b3<<42 | b3>>(64-42)) ^ b0
-//
-//			b4 += b1
-//			b1 = (b1<<17 | b1>>(64-17)) ^ b4
-//			b6 += b3
-//			b3 = (b3<<49 | b3>>(64-49)) ^ b6
-//			b0 += b5
-//			b5 = (b5<<36 | b5>>(64-36)) ^ b0
-//			b2 += b7
-//			b7 = (b7<<39 | b7>>(64-39)) ^ b2
-//
-//			b6 += b1
-//			b1 = (b1<<44 | b1>>(64-44)) ^ b6
-//			b0 += b7
-//			b7 = (b7<<9 | b7>>(64-9)) ^ b0
-//			b2 += b5
-//			b5 = (b5<<54 | b5>>(64-54)) ^ b2
-//			b4 += b3
-//			b3 = (b3<<56 | b3>>(64-56)) ^ b4
-//
-//			r++
-//
-//			b0 += keys[r%9]
-//			b1 += keys[(r+1)%9]
-//			b2 += keys[(r+2)%9]
-//			b3 += keys[(r+3)%9]
-//			b4 += keys[(r+4)%9]
-//			b5 += keys[(r+5)%9] + tweak[r%3]
-//			b6 += keys[(r+6)%9] + tweak[(r+1)%3]
-//			b7 += keys[(r+7)%9] + uint64(r)
-//
-//			b0 += b1
-//			b1 = (b1<<39 | b1>>(64-39)) ^ b0
-//			b2 += b3
-//			b3 = (b3<<30 | b3>>(64-30)) ^ b2
-//			b4 += b5
-//			b5 = (b5<<34 | b5>>(64-34)) ^ b4
-//			b6 += b7
-//			b7 = (b7<<24 | b7>>(64-24)) ^ b6
-//
-//			b2 += b1
-//			b1 = (b1<<13 | b1>>(64-13)) ^ b2
-//			b4 += b7
-//			b7 = (b7<<50 | b7>>(64-50)) ^ b4
-//			b6 += b5
-//			b5 = (b5<<10 | b5>>(64-10)) ^ b6
-//			b0 += b3
-//			b3 = (b3<<17 | b3>>(64-17)) ^ b0
-//
-//			b4 += b1
-//			b1 = (b1<<25 | b1>>(64-25)) ^ b4
-//			b6 += b3
-//			b3 = (b3<<29 | b3>>(64-29)) ^ b6
-//			b0 += b5
-//			b5 = (b5<<39 | b5>>(64-39)) ^ b0
-//			b2 += b7
-//			b7 = (b7<<43 | b7>>(64-43)) ^ b2
-//
-//			b6 += b1
-//			b1 = (b1<<8 | b1>>(64-8)) ^ b6
-//			b0 += b7
-//			b7 = (b7<<35 | b7>>(64-35)) ^ b0
-//			b2 += b5
-//			b5 = (b5<<56 | b5>>(64-56)) ^ b2
-//			b4 += b3
-//			b3 = (b3<<22 | b3>>(64-22)) ^ b4
-//		}
-//
-//		b0 += keys[0]
-//		b1 += keys[1]
-//		b2 += keys[2]
-//		b3 += keys[3]
-//		b4 += keys[4]
-//		b5 += keys[5] + tweak[0]
-//		b6 += keys[6] + tweak[1]
-//		b7 += keys[7] + 18
-//
-//		block[0], block[1], block[2], block[3] = b0, b1, b2, b3
-//		block[4], block[5], block[6], block[7] = b4, b5, b6, b7
-//	}
 //
 // Decrypt512 decrypts the 8 words of block using the expanded 512 bit key and
 // the 128 bit tweak. The keys[8] must be keys[0] xor keys[1] xor ... keys[8] xor C240.
